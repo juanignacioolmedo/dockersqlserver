@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sql_server_2019_container
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong123Passw0rd  # Asegúrate de usar una contraseña segura
+    ports:
+      - "1433:1433"
+    restart: unless-stopped
+    networks:
+      - sql_network
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql-tools
+    container_name: sql_server_init
+    depends_on:
+      - sqlserver
+    entrypoint: >
+      /bin/bash -c "
+      /scripts/wait-for-sql.sh sqlserver 1433;
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P YourStrong123Passw0rd -i /scripts/create-database.sql;
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P YourStrong123Passw0rd -i /scripts/configure-database.sql"
+    volumes:
+      - ./create-database.sql:/scripts/create-database.sql
+      - ./configure-database.sql:/scripts/configure-database.sql
+      - ./wait-for-sql.sh:/scripts/wait-for-sql.sh
+    networks:
+      - sql_network
+
+networks:
+  sql_network:
+    driver: bridge
+
+volumes:
+  sql_data:
+    driver: local
+
